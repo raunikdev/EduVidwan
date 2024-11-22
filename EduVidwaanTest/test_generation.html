@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Quiz</title>
+    <style>
+    body {
+        font-family: 'Poppins', Arial, sans-serif;
+        background: linear-gradient(to right, #4facfe, #00f2fe);
+        color: #333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    
+    .container {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        width: 60%;
+        max-width: 800px;
+        text-align: center;
+    }
+    
+    .question {
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 30px;
+        color: #555;
+    }
+    
+    .options {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    
+    button {
+        padding: 15px;
+        font-size: 18px;
+        font-weight: 500;
+        color: #fff;
+        background: linear-gradient(to right, #667eea, #764ba2);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    button:hover {
+        background: linear-gradient(to right, #764ba2, #667eea);
+        transform: translateY(-3px);
+    }
+    
+    .nav-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+    }
+    
+    .prev-btn, .next-btn {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(to right, #667eea, #764ba2);
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        font-size: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .prev-btn:hover, .next-btn:hover {
+        background: linear-gradient(to right, #764ba2, #667eea);
+        transform: scale(1.1);
+    }
+    
+    .score {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        margin-top: 30px;
+    }
+    
+    .exit-btn {
+        padding: 12px 30px;
+        font-size: 18px;
+        background: linear-gradient(to right, #ff416c, #ff4b2b);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+        display: inline-block;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .exit-btn:hover {
+        background: linear-gradient(to right, #ff4b2b, #ff416c);
+        transform: translateY(-3px);
+    }
+    
+    .hidden {
+        display: none;
+    }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="question-container">
+        <div class="question"></div>
+        <div class="options"></div>
+    </div>
+    <div class="nav-buttons">
+        <button class="prev-btn" onclick="navigate(-1)" disabled>&#8592;</button>
+        <button class="next-btn" onclick="navigate(1)">&#8594;</button>
+    </div>
+    <div class="score hidden">
+        Your Score: <span id="score"></span>
+        <button class="exit-btn" onclick="exitQuiz()">Exit</button>
+    </div>
+</div>
+
+<script>
+    let questions = [];
+    let randomQuestions = [];
+    let currentQuestionIndex = 0;
+    let userAnswers = [];
+    let score = 0;
+
+    // Function to fetch questions from the API
+    async function fetchQuestions(difficulty) {
+        try {
+            const response = await fetch(`http://127.0.0.1:5000/api/getQuestions?difficulty=${difficulty}`);
+            const data = await response.json();
+            if (data.questions && data.questions.length > 10) {
+                questions = data.questions;
+                randomQuestions = questions.sort(() => 0.5 - Math.random()).slice(0, 10);
+                showQuestion();
+            } else {
+                alert('Not enough questions available!');
+            }
+        } catch (error) {
+            console.error('Error fetching questions:', error);
+            alert('Failed to load questions.');
+        }
+    }
+
+    // Function to show the current question
+    function showQuestion() {
+        if (currentQuestionIndex < 0 || currentQuestionIndex >= randomQuestions.length) return;
+
+        const question = randomQuestions[currentQuestionIndex];
+        const questionElement = document.querySelector('.question');
+        const optionsElement = document.querySelector('.options');
+
+        questionElement.textContent = `${currentQuestionIndex + 1}. ${question.question}`;
+        optionsElement.innerHTML = '';
+
+        question.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.textContent = option;
+            button.onclick = () => selectOption(index);
+            optionsElement.appendChild(button);
+        });
+
+        document.querySelector('.prev-btn').disabled = currentQuestionIndex === 0;
+        document.querySelector('.next-btn').disabled = currentQuestionIndex === randomQuestions.length - 1;
+    }
+
+    // Function to navigate to the next/previous question
+    function navigate(direction) {
+        if (currentQuestionIndex + direction >= 0 && currentQuestionIndex + direction < randomQuestions.length) {
+            currentQuestionIndex += direction;
+            showQuestion();
+        }
+    }
+
+    // Function to handle option selection
+    function selectOption(index) {
+        const correctAnswer = randomQuestions[currentQuestionIndex].answer;
+        const selectedOption = randomQuestions[currentQuestionIndex].options[index];
+
+        userAnswers[currentQuestionIndex] = selectedOption === correctAnswer;
+
+        if (currentQuestionIndex < randomQuestions.length - 1) {
+            currentQuestionIndex++;
+            showQuestion();
+        } else { 
+            showScore();
+        }
+    }
+
+    // Function to calculate and display the score
+    function showScore() {
+        score = userAnswers.filter(answer => answer === true).length;
+        document.querySelector('.question-container').classList.add('hidden');
+        document.querySelector('.nav-buttons').classList.add('hidden');
+        document.querySelector('.score').classList.remove('hidden');
+        document.getElementById('score').textContent = `${score} / ${randomQuestions.length}`;
+    }
+
+    // Exit function
+    function exitQuiz() {
+        window.history.back();
+    }
+
+    // Initialize the quiz by fetching questions
+    fetchQuestions('easy');  // Change to 'medium' or 'hard' as needed
+</script>
+
+</body>
+</html>

@@ -6,7 +6,7 @@ function scrollToTestSeries() {
   });
 }
 
-// Show login page
+// Show login page 
 function showLoginPage() {
   alert('Redirecting to the login page!');
 }

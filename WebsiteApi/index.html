@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Generator</title>
+</head>
+<body>
+    <h2>Generate Questions</h2>
+    <form id="questionForm">
+        <label for="difficulty">Difficulty:</label>
+        <select id="difficulty" name="difficulty" required>
+            <option value="">Select Difficulty</option>
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+        </select><br><br>
+
+        <label for="topic">Topic:</label>
+        <input type="text" id="topic" name="topic"><br><br>
+
+        <label for="subtopic">Subtopic:</label>
+        <input type="text" id="subtopic" name="subtopic"><br><br>
+
+        <label for="pyqs">PYQs:</label>
+        <input type="checkbox" id="pyqs" name="pyqs" onchange="toggleYearInput()"><br><br>
+
+        <div id="yearInput" style="display: none;">
+            <label for="year">PYQ Year:</label>
+            <input type="number" id="year" name="year"><br><br>
+        </div>
+
+        <label for="num_questions">Number of Questions:</label>
+        <input type="number" id="num_questions" name="num_questions" required><br><br>
+
+        <label for="question_type">Question Type:</label>
+        <select id="question_type" name="question_type" required>
+            <option value="">Select Type</option>
+            <option value="MCQ">MCQ</option>
+            <option value="INT">Integer Type</option>
+        </select><br><br>
+
+        <button type="submit">Generate</button>
+    </form>
+
+    <h3>Generated Questions:</h3>
+    <div id="result"></div>
+
+    <script>
+        function toggleYearInput() {
+            document.getElementById("yearInput").style.display = document.getElementById("pyqs").checked ? "block" : "none";
+        }
+
+        document.getElementById("questionForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            let data = {
+                difficulty: document.getElementById("difficulty").value,
+                topic: document.getElementById("topic").value || null,
+                subtopic: document.getElementById("subtopic").value || null,
+                pyqs: document.getElementById("pyqs").checked,
+                year: document.getElementById("pyqs").checked ? parseInt(document.getElementById("year").value) || null : null,
+                num_questions: parseInt(document.getElementById("num_questions").value),
+                question_type: document.getElementById("question_type").value
+            };
+
+            try {
+                let response = await fetch("http://127.0.0.1:8000/generate_questions", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data)
+                });
+
+                let result = await response.json();
+                let resultDiv = document.getElementById("result");
+                resultDiv.innerHTML = "";
+
+                if (result.questions && result.questions.length > 0) {
+                    result.questions.forEach(q => {
+                        let optionsHtml = "";
+                        if (q.options && q.options.length > 0) {
+                            optionsHtml = "<strong>Options:</strong><ul>";
+                            q.options.forEach(option => {
+                                optionsHtml += `<li>${option}</li>`;
+                            });
+                            optionsHtml += "</ul>";
+                        }
+
+                        resultDiv.innerHTML += `<p><strong>Question:</strong> ${q.question} <br> 
+                                                ${optionsHtml}
+                                                <strong>Answer:</strong> ${q.answer} <br>
+                                                <strong>Topic:</strong> ${q.topic || "N/A"} <br>
+                                                <strong>Subtopic:</strong> ${q.subtopic || "N/A"} <br>
+                                                <strong>PYQs:</strong> ${q.pyqs ? "Yes" : "No"} ${q.pyqs ? "(Year: " + (q.year || "N/A") + ")" : ""}<br>
+                                                <strong>Type:</strong> ${q.type || "N/A"} <br></p>`;
+                    });
+                } else {
+                    resultDiv.innerHTML = "<p>No questions found matching your criteria.</p>";
+                }
+            } catch (error) {
+                document.getElementById("result").innerText = "Error: " + error;
+            }
+        });
+    </script>
+</body>
+</html>
